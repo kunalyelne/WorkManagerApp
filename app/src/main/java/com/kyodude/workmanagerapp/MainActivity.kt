@@ -92,7 +92,10 @@ class MainActivity : AppCompatActivity() {
 
                 // If there is an output file show "See File" button
                 if (!outputImageUri.isNullOrEmpty()) {
-                    viewModel.setOutputUri(outputImageUri as String)
+                    viewModel.setOutputUri(outputImageUri)
+                    viewModel.imageUri?.let { imageUri ->
+                        Glide.with(this).load(imageUri).into(binding.ivIcon)
+                    }
                     binding.seeFile.visibility = View.VISIBLE
                 }
             } else {
