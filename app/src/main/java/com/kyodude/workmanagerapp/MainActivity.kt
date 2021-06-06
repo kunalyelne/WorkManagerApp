@@ -1,25 +1,50 @@
 package com.kyodude.workmanagerapp
 
+import android.Manifest
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.work.WorkInfo
 import com.bumptech.glide.Glide
 import com.kyodude.workmanagerapp.databinding.ActivityMainBinding
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: BlurViewModel
+    private val REQUEST_CODE_IMAGE = 100
+    private val REQUEST_CODE_PERMISSIONS = 101
+
+    private val KEY_PERMISSIONS_REQUEST_COUNT = "KEY_PERMISSIONS_REQUEST_COUNT"
+    private val MAX_NUMBER_REQUEST_PERMISSIONS = 2
+
+    private val permissions = Arrays.asList(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
+
+    private var permissionRequestCount: Int = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         viewModel = ViewModelProvider(this).get(BlurViewModel::class.java)
-        val imageUriExtra = intent.getStringExtra(KEY_IMAGE_URI)
-        viewModel.setImageUri(imageUriExtra)
+        savedInstanceState?.let {
+            permissionRequestCount = it.getInt(KEY_PERMISSIONS_REQUEST_COUNT, 0)
+        }
+
+        // Make sure the app has correct permissions to run
+        requestPermissionsIfNecessary()
+        val uri: Uri = Uri.parse("android.resource://com.kyodude.workmanagerapp/drawable/android")
+        viewModel.setImageUri(uri.toString())
         viewModel.imageUri?.let { imageUri ->
             Glide.with(this).load(imageUri).into(binding.ivIcon)
         }
@@ -107,4 +132,57 @@ class MainActivity : AppCompatActivity() {
                 R.id.deepBlur -> 3
                 else -> 1
             }
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_PERMISSIONS_REQUEST_COUNT, permissionRequestCount)
+    }
+
+    /**
+     * Request permissions twice - if the user denies twice then show a toast about how to update
+     * the permission for storage. Also disable the button if we don't have access to pictures on
+     * the device.
+     */
+    private fun requestPermissionsIfNecessary() {
+        if (!checkAllPermissions()) {
+            if (permissionRequestCount < MAX_NUMBER_REQUEST_PERMISSIONS) {
+                permissionRequestCount += 1
+                ActivityCompat.requestPermissions(
+                    this,
+                    permissions.toTypedArray(),
+                    REQUEST_CODE_PERMISSIONS
+                )
+            } else {
+                Toast.makeText(
+                    this,
+                    "Set permissions in settings",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    /** Permission Checking  */
+    private fun checkAllPermissions(): Boolean {
+        var hasPermissions = true
+        for (permission in permissions) {
+            hasPermissions = hasPermissions and isPermissionGranted(permission)
+        }
+        return hasPermissions
+    }
+
+    private fun isPermissionGranted(permission: String) =
+        ContextCompat.checkSelfPermission(this, permission) ==
+                PackageManager.PERMISSION_GRANTED
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            requestPermissionsIfNecessary() // no-op if permissions are granted already.
+        }
+    }
 }
