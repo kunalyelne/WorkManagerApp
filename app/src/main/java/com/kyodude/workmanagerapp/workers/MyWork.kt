@@ -9,7 +9,6 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.kyodude.workmanagerapp.KEY_IMAGE_URI
-import com.kyodude.workmanagerapp.R
 
 class MyWork(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     override fun doWork(): Result {

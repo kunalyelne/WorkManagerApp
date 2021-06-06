@@ -1,11 +1,13 @@
 package com.kyodude.workmanagerapp
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.work.WorkInfo
+import com.bumptech.glide.Glide
 import com.kyodude.workmanagerapp.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -18,7 +20,24 @@ class MainActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this).get(BlurViewModel::class.java)
         val imageUriExtra = intent.getStringExtra(KEY_IMAGE_URI)
         viewModel.setImageUri(imageUriExtra)
-        
+        viewModel.imageUri?.let { imageUri ->
+            Glide.with(this).load(imageUri).into(binding.ivIcon)
+        }
+
+        binding.startBlur.setOnClickListener { viewModel.applyBlur(blurLevel) }
+
+        // Setup view output image file button
+        binding.seeFile.setOnClickListener {
+            viewModel.outputUri?.let { currentUri ->
+                val actionView = Intent(Intent.ACTION_VIEW, currentUri)
+                actionView.resolveActivity(packageManager)?.run {
+                    startActivity(actionView)
+                }
+            }
+        }
+
+        // Hookup the Cancel button
+        binding.cancel.setOnClickListener { viewModel.cancelWork() }
 
         viewModel.outputWorkInfos.observe(this, workInfosObserver())
     }
@@ -56,4 +75,36 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    /**
+     * Shows and hides views for when the Activity is processing an image
+     */
+    private fun showWorkInProgress() {
+        with(binding) {
+            progressBar.visibility = View.VISIBLE
+            cancel.visibility = View.VISIBLE
+            startBlur.visibility = View.GONE
+            seeFile.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Shows and hides views for when the Activity is done processing an image
+     */
+    private fun showWorkFinished() {
+        with(binding) {
+            progressBar.visibility = View.GONE
+            cancel.visibility = View.GONE
+            startBlur.visibility = View.VISIBLE
+        }
+    }
+
+    private val blurLevel: Int
+        get() =
+            when (binding.radioGrp.checkedRadioButtonId) {
+                R.id.lilBlur -> 1
+                R.id.moreBlur -> 2
+                R.id.deepBlur -> 3
+                else -> 1
+            }
 }
